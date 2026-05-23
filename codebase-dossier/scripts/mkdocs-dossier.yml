@@ -1,0 +1,80 @@
+site_name: Codebase Interview Dossier
+site_description: Technical onboarding dossier for the gen-auto-ml platform.
+
+docs_dir: src
+site_dir: site-dossier
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.magiclink
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.arithmatex:
+      generic: true
+
+plugins:
+  - search
+
+nav:
+  - Welcome: index.md
+  - Dossier Chapters:
+      - "00. Evidence Map": 00-evidence-map.md
+      - "01. Product & System Overview": 01-product-and-system-overview.md
+      - "02. Agentic AI Architecture": 02-agentic-ai-architecture.md
+      - "03. Backend Deep Dive": 03-backend-deep-dive.md
+      - "04. Frontend Deep Dive": 04-frontend-deep-dive.md
+      - "05. Data Model & Storage": 05-data-model-and-storage.md
+      - "06. Infra & Local Ops": 06-infra-and-local-ops.md
+      - "07. Security & Safety": 07-security-and-safety.md
+      - "08. Testing & Quality": 08-testing-and-quality.md
+      - "09. Unique Engineering Highlights": 09-unique-engineering-highlights.md
+      - "10. Interview Prep Guide": 10-interview-prep.md
+      - "11. Risks & Next Steps": 11-open-questions-and-risks.md
