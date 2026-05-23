@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Article Title: Engineering Guide</title>
+    <meta name="description"
+        content="Concise document summary covering architectural primitives and production setups." />
+
+    <!-- Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet" />
+
+    <link rel="stylesheet" href="./base.css" />
+    <!-- COMPONENT_CSS -->
+</head>
+
+<body>
+    <div class="layout-wrapper">
+        <article class="article-content">
+            <header class="article-header">
+                <h1 class="article-title">Engineering Guide Title</h1>
+            </header>
+
+            <nav class="table-of-contents">
+                <details class="toc-details" open>
+                    <summary class="toc-summary">
+                        <h3>Table of Contents</h3>
+                        <span class="toc-toggle-icon">▼</span>
+                    </summary>
+                    <div class="toc-content">
+                        <ul>
+                            <li>
+                                <a href="#content">Section Heading</a>
+                                <ul>
+                                    <li><a href="#subcontent">Nested Sub-section</a></li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </details>
+            </nav>
+
+            <section id="content">
+                <h2>Section Heading</h2>
+                <p>
+                    Main comprehensive descriptive paragraphs detailing operational
+                    constraints.
+                </p>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <div class="code-label">example.sh</div>
+                        <button class="copy-btn">Copy</button>
+                    </div>
+                    <pre><code><span class="kw">echo</span> <span class="st">"Hello, production setup!"</span></code></pre>
+                </div>
+            </section>
+        </article>
+    </div>
+    <script src="./base.js"></script>
+    <!-- COMPONENT_JS -->
+    <script>
+                        // article-specific simulation logic or component handlers go here
+    </script>
+</body>
+
+</html>

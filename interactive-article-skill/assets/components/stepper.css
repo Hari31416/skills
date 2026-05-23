@@ -1,0 +1,94 @@
+/* Stepper component styles */
+
+.stepper {
+    background: #f8fafc;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin: 2.5rem 0;
+    overflow: hidden;
+}
+
+.stepper-header {
+    display: flex;
+    background: white;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem;
+    gap: 0.5rem;
+}
+
+.stepper-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.stepper-dot.is-active {
+    background: var(--accent-color);
+    transform: scale(1.2);
+}
+
+.stepper-content-wrapper {
+    position: relative;
+    min-height: 200px;
+}
+
+.stepper-step {
+    padding: 2rem;
+    display: none;
+}
+
+.stepper-step.is-active {
+    display: block;
+    animation: slideIn 0.4s ease;
+}
+
+.stepper-controls {
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 2rem;
+    background: white;
+    border-top: 1px solid var(--border-color);
+}
+
+.stepper-counter {
+    margin-left: auto;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    align-self: center;
+}
+
+.stepper-btn {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.stepper-btn:hover:not(:disabled) {
+    background: var(--border-soft);
+}
+
+.stepper-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+    .stepper {
+        background: #0f172a;
+    }
+
+    .stepper-header,
+    .stepper-controls {
+        background: #1e293b;
+    }
+}
