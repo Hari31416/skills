@@ -271,21 +271,12 @@ consolidated_dossier.md: src/index.md \
 
 consolidate: consolidated_dossier.md
 
-pdf: consolidated_dossier.md
- PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
- MERMAID_FILTER_SCALE=3 \
- pandoc consolidated_dossier.md -o consolidated_dossier.pdf \
-  --toc \
-  --pdf-engine=xelatex \
-  -V mainfont="Arial" \
-  -V monofont="Menlo" \
-  -V geometry:margin=1in \
-  --filter mermaid-filter \
-  -V header-includes="\usepackage[htt]{hyphenat}\setlength{\tabcolsep}{4pt}\let\oldlongtable\longtable\let\endoldlongtable\endlongtable\renewenvironment{longtable}[2][]{\small\oldlongtable[#1]{#2}}{\endoldlongtable}"
- @rm -f mermaid-filter.err
+pdf: md2pdf consolidated_dossier.md --theme academic
+
+install-md2pdf: uv tool install "pymd2pdf[matplotlib]"
 ```
 
-> You might need to chnages `consolidated_dossier.md` command if there are different naming conventions than used in the codebase for the md files.
+> You might need to make changes for creating `consolidated_dossier.md` if there are different naming conventions than used in the codebase for the md files.
 > You can also have a look at files in `scipts` folder for ready made `mkdocs-dossier.yml`, makefile and other commands, but dont copy blindly. Make sure to update them based on the codebase structure and requirements.
 
 ## File Templates
