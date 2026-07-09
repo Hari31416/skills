@@ -25,7 +25,7 @@ codebase-dossier/
     ├── index.md
     ├── 00-evidence-map.md
     ├── 01-product-and-system-overview.md
-    ├── 02-agentic-ai-architecture.md
+    ├── 02-agentic-ai-architecture.md       [Optional: For Agentic AI Codebases]
     ├── 03-backend-deep-dive.md
     ├── 04-frontend-deep-dive.md
     ├── 05-data-model-and-storage.md
@@ -36,6 +36,9 @@ codebase-dossier/
     ├── 10-interview-prep.md
     └── 11-open-questions-and-risks.md
 ```
+
+> [!NOTE]
+> `02-agentic-ai-architecture.md` is optional. If the codebase being documented is a non-AI or general utility project, omit this file and remove its references from the `nav` block in `mkdocs-dossier.yml` and the `consolidated_dossier.md` build rules in the `Makefile`.
 
 If the codebase is small, keep the files concise. If the codebase is large, expand each file enough to be useful without turning it into a raw file listing.
 
@@ -332,9 +335,9 @@ Include:
 - Key technical bets and tradeoffs.
 - What to say in an interview when asked, "What did you build?"
 
-### `02-agentic-ai-architecture.md`
+### `02-agentic-ai-architecture.md` (Optional)
 
-Include:
+Include (only if the codebase has agentic AI features, otherwise omit this file):
 
 - Agent loop and orchestration model.
 - Model provider boundaries.
