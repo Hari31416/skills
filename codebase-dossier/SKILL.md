@@ -249,7 +249,11 @@ consolidated_dossier.md: src/index.md \
                          src/10-interview-prep.md \
                          src/11-open-questions-and-risks.md
  @echo "Consolidating src markdown files into consolidated_dossier.md..."
- cat src/index.md > consolidated_dossier.md
+ @echo "---" > consolidated_dossier.md
+ @echo "title: \"[Dossier Title, e.g. A Unified Framework for Programmatic Document Generation]\"" >> consolidated_dossier.md
+ @echo "---" >> consolidated_dossier.md
+ @echo "" >> consolidated_dossier.md
+ @cat src/index.md >> consolidated_dossier.md
  @for f in 00-evidence-map.md \
            01-product-and-system-overview.md \
            02-agentic-ai-architecture.md \
@@ -271,7 +275,8 @@ consolidated_dossier.md: src/index.md \
 
 consolidate: consolidated_dossier.md
 
-pdf: md2pdf consolidated_dossier.md --theme academic
+pdf: consolidated_dossier.md
+	md2pdf consolidated_dossier.md --theme academic
 
 install-md2pdf: uv tool install "pymd2pdf[matplotlib]"
 ```
@@ -287,7 +292,7 @@ Create a MkDocs configuration that treats the `src/` folder as the docs director
 
 ### `Makefile`
 
-Create a standard Unix Makefile that defines the targets `setup`, `serve`, `build`, `clean`, `consolidate` (which builds `consolidated_dossier.md` on demand from `src/` inputs), and `pdf` (which compiles `consolidated_dossier.pdf` with high-density vector diagrams and hyphenation wrap/global scale corrections for table formatting).
+Create a standard Unix Makefile that defines the targets `setup`, `serve`, `build`, `clean`, `consolidate` (which builds `consolidated_dossier.md` on demand from `src/` inputs, including a prepended YAML frontmatter block with dynamically populated title, author, subject, and keywords specific to the analyzed codebase), and `pdf` (which compiles `consolidated_dossier.pdf` with high-density vector diagrams and hyphenation wrap/global scale corrections for table formatting).
 
 ### `index.md`
 

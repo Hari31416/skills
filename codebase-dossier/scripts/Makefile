@@ -31,7 +31,11 @@ consolidated_dossier.md: src/index.md \
                          src/10-interview-prep.md \
                          src/11-open-questions-and-risks.md
 	@echo "Consolidating src markdown files into consolidated_dossier.md..."
-	cat src/index.md > consolidated_dossier.md
+	@echo "---" > consolidated_dossier.md
+	@echo "title: \"[Dossier Title, e.g. A Unified Framework for Programmatic Document Generation]\"" >> consolidated_dossier.md
+	@echo "---" >> consolidated_dossier.md
+	@echo "" >> consolidated_dossier.md
+	@cat src/index.md >> consolidated_dossier.md
 	@for f in 00-evidence-map.md \
 	          01-product-and-system-overview.md \
 	          02-agentic-ai-architecture.md \
@@ -54,13 +58,4 @@ consolidated_dossier.md: src/index.md \
 consolidate: consolidated_dossier.md
 
 pdf: consolidated_dossier.md
-	PUPPETEER_EXECUTABLE_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-	MERMAID_FILTER_SCALE=3 \
-	pandoc consolidated_dossier.md -o consolidated_dossier.pdf \
-		--pdf-engine=xelatex \
-		-V mainfont="Arial" \
-		-V monofont="Menlo" \
-		-V geometry:margin=1in \
-		--filter mermaid-filter \
-		-V header-includes="\usepackage[htt]{hyphenat}\setlength{\tabcolsep}{4pt}\let\oldlongtable\longtable\let\endoldlongtable\endlongtable\renewenvironment{longtable}[2][]{\small\oldlongtable[#1]{#2}}{\endoldlongtable}"
-	@rm -f mermaid-filter.err
+	md2pdf consolidated_dossier.md --theme academic
