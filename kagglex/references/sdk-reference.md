@@ -6,11 +6,12 @@ Programmatic Python interface for `kagglex`.
 
 ```python
 from kagglex import (
-    AcceleratorType,
+    DatasetConfig,
     InteractiveClient,
     Job,
     KaggleRunner,
     RunConfig,
+    RunRecord,
 )
 ```
 
@@ -19,7 +20,10 @@ from kagglex import (
 The primary class for dispatching and managing remote Kaggle jobs.
 
 ```python
-runner = KaggleRunner(staging_dir=None)
+from pathlib import Path
+from kagglex import KaggleRunner, RunConfig
+
+runner = KaggleRunner(repo_root=Path("."))
 ```
 
 ### Methods
@@ -29,37 +33,21 @@ runner = KaggleRunner(staging_dir=None)
 Stage, submit, and optionally wait for a job:
 
 ```python
-job = runner.run(
-    command="python -m train --epochs 5",
+config = RunConfig(
+    command="python -m mypkg.train --epochs 5",
     title="Fine Tuning",
-    gpu="t4-2x",
+    gpu_type="t4-2x",
     multi_gpu=True,
-    wait=True,
-    output_dir="./results",
+    dataset_slugs=["username/my-dataset"],
+    extra_pip_deps=["wandb"],
+    kaggle_secrets=["WANDB_API_KEY"],
+    env_vars={"WANDB_PROJECT": "experiment-1"},
+    output_dir=Path("./results"),
+    auto_dataset=False,
 )
-```
 
-Parameters:
-
-- `command`: Remote shell command to run.
-- `target_file`: Path to a standalone Python script to execute.
-- `config`: Optional `RunConfig` instance providing full configuration.
-- `wait`: When True, blocks until the job finishes. Defaults to True.
-- `title`: Human-readable kernel title.
-- `gpu`: Accelerator string (`t4-2x`, `p100`, `v3-8`, or `none`).
-- `multi_gpu`: When True, runs multi-GPU wrapping with torchrun.
-- `datasets`: List of Kaggle dataset slugs to attach.
-- `extra_deps`: List of pip dependencies to install remotely.
-- `output_dir`: Path to folder for downloading artifacts.
-
-Returns a `Job` handle.
-
-#### push
-
-Submit a job to Kaggle without blocking:
-
-```python
-job = runner.push(command="python train.py", title="Async Training")
+job = runner.run(config=config, wait=True, stream=True, pull=True)
+print(f"Finished with status: {job.status}")
 ```
 
 #### stage
@@ -67,13 +55,29 @@ job = runner.push(command="python train.py", title="Async Training")
 Package project files locally without uploading to Kaggle. Useful for dry runs and inspection:
 
 ```python
-staged = runner.stage(command="python train.py")
-print(f"Payload created at: {staged.metadata_dir}")
+staging_path = runner.stage(config=config)
+print(f"Staged at: {staging_path}")
+```
+
+#### list_runs
+
+Query recent run records from `~/.kagglex/runs.json`:
+
+```python
+records = runner.list_runs(limit=10)
+```
+
+#### cancel
+
+Cancel an active remote kernel:
+
+```python
+cancelled = runner.cancel("username/kernel-slug")
 ```
 
 ## Job
 
-Handle returned by `runner.run()` and `runner.push()`.
+Handle returned by `runner.run()`.
 
 ### Properties
 
@@ -89,16 +93,16 @@ Handle returned by `runner.run()` and `runner.push()`.
 Block until execution completes, fails, or is cancelled:
 
 ```python
-info = job.wait(poll_interval_sec=20, timeout_sec=3600)
+info = job.wait(poll_interval=20, timeout_sec=3600)
 print(f"Finished with status: {info['status']}")
 ```
 
 #### stream_logs
 
-Stream live console output to stdout or a custom handler:
+Stream live console output to stdout:
 
 ```python
-job.stream_logs(on_line=lambda line: print(f"[REMOTE] {line}"))
+job.stream_logs()
 ```
 
 #### pull_outputs
@@ -107,7 +111,7 @@ Download generated artifacts from the remote kernel:
 
 ```python
 downloaded_files = job.pull_outputs(
-    destination_dir="./results",
+    dest_dir=Path("./results"),
     include_patterns=["*.json", "*.pt"],
     exclude_patterns=["cache/*"],
 )
@@ -126,17 +130,34 @@ success = job.cancel()
 Dataclass specifying run options:
 
 ```python
-config = RunConfig(
-    command="python -m mypkg.train",
-    gpu="t4-2x",
-    multi_gpu=True,
-    extra_deps=["torch>=2.2.0", "wandb"],
-    env_vars={"WANDB_PROJECT": "experiment-1"},
-    kaggle_secrets=["WANDB_API_KEY"],
-    datasets=["username/my-dataset"],
-    poll_interval=15,
-    timeout_sec=7200,
-)
+from dataclasses import dataclass, field
+from pathlib import Path
+
+@dataclass
+class RunConfig:
+    command: str
+    title: str
+    slug: str | None = None
+    project_dir: Path | None = None
+    target_file: Path | None = None
+    gpu_type: str = "t4-2x"
+    enable_tpu: bool = False
+    multi_gpu: bool = False
+    enable_internet: bool = True
+    dataset_slugs: list[str] = field(default_factory=list)
+    include_data: list[str] = field(default_factory=list)
+    extra_pip_deps: list[str] = field(default_factory=list)
+    env_vars: dict[str, str] = field(default_factory=dict)
+    kaggle_secrets: list[str] = field(default_factory=list)
+    parent_kernels: list[str] = field(default_factory=list)
+    output_dir: Path | None = None
+    record_file: Path | None = None
+    include_outputs: list[str] = field(default_factory=list)
+    exclude_outputs: list[str] = field(default_factory=list)
+    auto_dataset: bool = False
+    auto_dataset_slug: str | None = None
+    poll_interval: int = 20
+    timeout_sec: int = 43200
 ```
 
 ## InteractiveClient
@@ -147,12 +168,12 @@ Client for communicating with active Kaggle Jupyter sessions:
 from kagglex import InteractiveClient
 
 client = InteractiveClient(
-    base_url="https://kkb-production.jupyter-proxy.kaggle.net?token=TOKEN",
+    url="https://kkb-production.jupyter-proxy.kaggle.net/k/123/token=TOKEN",
     timeout=120,
 )
 
 # Test connectivity
-is_alive = client.test_connection()
+is_alive, msg = client.test_connection()
 
 # Query hardware
 gpu_stats = client.get_gpu_info()
@@ -162,6 +183,6 @@ result = client.execute_code("import torch; print(torch.cuda.is_available())")
 print(result["stdout"])
 
 # Transfer files
-client.upload_file(local_path=Path("./model.py"), remote_filename="model.py")
-client.download_file(remote_filename="metrics.json", local_path=Path("./metrics.json"))
+client.upload_file("./model.py")
+client.download_file("metrics.json", local_path="./metrics.json")
 ```

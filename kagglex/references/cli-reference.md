@@ -8,19 +8,19 @@ Available on all invocations:
 
 - `-h`, `--help`: Show usage help and exit.
 - `-v`, `--verbose`: Enable verbose debug logging output.
+- `-q`, `--quiet`: Suppress non-error log output.
 
 ## kagglex run
 
 Stage, package, dispatch, monitor, and sync outputs from a remote Kaggle execution.
 
 ```bash
-kagglex run [COMMAND] [OPTIONS]
+kagglex run [OPTIONS]
 ```
 
 ### Execution target
 
-- `COMMAND`: Positional shell command string to run inside the remote kernel (for example: `python -m train --lr 1e-4`).
-- `--command COMMAND`: Explicit remote command string.
+- `--command COMMAND`: Explicit remote command string (e.g. `python -m mypkg.train`).
 - `--file FILE`: Path to a standalone Python script to execute remotely.
 - `--dir DIR`: Local directory to package as the project root. Defaults to current working directory.
 
@@ -32,16 +32,18 @@ kagglex run [COMMAND] [OPTIONS]
 ### Environment and dependencies
 
 - `--extra-deps [EXTRA_DEPS ...]`: Additional pip packages to install before running the target command.
-- `--env [ENV ...]`: Environment variables to pass to the remote process in `KEY=VAL` or `KEY` format.
+- `--env [ENV ...]`: Environment variables to pass to the remote process in `KEY=VAL` format.
 - `--env-file ENV_FILE`: Path to a local `.env` file containing variables to inject.
-- `--kaggle-secrets [KAGGLE_SECRETS ...]`: Kaggle user secrets to fetch and inject into the environment.
+- `--secret [SECRETS ...]`: Kaggle user secrets to fetch and inject into the environment.
 - `--no-internet`: Disable internet access inside the remote Kaggle kernel.
 
 ### Data and datasets
 
-- `--datasets [DATASETS ...]`: Kaggle dataset slugs to mount (for example: `username/dataset-slug`).
+- `--dataset [DATASETS ...]`: Kaggle dataset slugs to mount (e.g. `username/dataset-slug`).
 - `--include-data [INCLUDE_DATA ...]`: Local data files or folders to package into the upload bundle.
-- `--parent-kernels [PARENT_KERNELS ...]`: Slugs of parent kernels whose outputs should be attached.
+- `--auto-dataset`: Auto-offload large payload (> 5 MB) as a private Kaggle dataset.
+- `--auto-dataset-slug SLUG`: Custom slug identifier for the auto-dataset payload.
+- `--parent-kernel [PARENT_KERNELS ...]`: Slugs of parent kernels whose outputs should be attached.
 
 ### Job identification and lifecycle
 
@@ -50,12 +52,12 @@ kagglex run [COMMAND] [OPTIONS]
 - `--poll-interval POLL_INTERVAL`: Seconds between status polling queries. Defaults to 20 seconds.
 - `--stream`: Stream execution logs in real time.
 - `--no-wait`: Submit job and exit immediately without polling.
+- `--no-pull`: Do not download output files upon completion.
 - `--dry-run`: Stage all files and metadata locally without uploading to Kaggle.
 
 ### Output synchronization
 
-- `--output-dir OUTPUT_DIR`: Local folder to download artifacts to upon completion.
-- `--record-file RECORD_FILE`: Markdown file (such as `README.md`) to append run metadata to.
+- `--output-dir OUTPUT_DIR`: Local folder to download artifacts to upon completion (default: `./outputs`).
 - `--include-outputs [INCLUDE_OUTPUTS ...]`: Glob patterns for files to download from remote outputs.
 - `--exclude-outputs [EXCLUDE_OUTPUTS ...]`: Glob patterns for files to ignore during artifact download.
 
@@ -75,28 +77,31 @@ kagglex exec [CODE] [OPTIONS]
 - `--timeout TIMEOUT`: Execution timeout in seconds. Defaults to 120 seconds.
 - `--test`: Test HTTP connectivity to the Jupyter proxy server.
 - `--gpu-info`: Print remote GPU device names, driver versions, and VRAM utilization.
-- `--list-files [SUBPATH]`: List files and directories within `/kaggle/working/`.
+- `--list-files`: List files and directories within `/kaggle/working/`.
 - `--upload LOCAL_PATH`: Upload a local file into `/kaggle/working/`.
-- `--remote-name REMOTE_NAME`: Custom destination name when uploading.
 - `--download REMOTE_NAME`: Download a file from `/kaggle/working/`.
 - `-o OUTPUT`, `--output OUTPUT`: Local path to save downloaded file to.
 
-## kagglex status
+## kagglex quota
 
-Check the status of a Kaggle kernel.
+Display estimated GPU and TPU accelerator consumption over a rolling window.
 
 ```bash
-kagglex status KERNEL_SLUG
+kagglex quota [OPTIONS]
 ```
 
-Outputs include state (`queued`, `running`, `complete`, `error`, `cancelAcknowledged`), execution duration, and error messages if failed.
+### Options
 
-## kagglex logs
+- `--days DAYS`: Number of days in rolling window (default: 7).
+- `--gpu-limit HOURS`: Weekly GPU quota limit in hours (default: 30.0).
+- `--tpu-limit HOURS`: Weekly TPU quota limit in hours (default: 20.0).
 
-Fetch stdout and stderr logs for a kernel.
+## kagglex list
+
+Display recent Kaggle runs tracked globally in `~/.kagglex/runs.json`.
 
 ```bash
-kagglex logs KERNEL_SLUG
+kagglex list [--limit N]
 ```
 
 ## kagglex cancel
@@ -104,42 +109,20 @@ kagglex logs KERNEL_SLUG
 Request cancellation of a running or queued Kaggle kernel.
 
 ```bash
-kagglex cancel KERNEL_SLUG
+kagglex cancel KERNEL_ID_OR_SLUG
 ```
-
-## kagglex list
-
-Display recent Kaggle runs tracked locally and remotely.
-
-```bash
-kagglex list
-```
-
-## kagglex pull
-
-Download outputs from an existing completed kernel.
-
-```bash
-kagglex pull KERNEL_SLUG --output-dir ./results [OPTIONS]
-```
-
-### Options
-
-- `--output-dir OUTPUT_DIR`: Destination folder for downloaded files.
-- `--include-outputs [PATTERNS ...]`: Glob patterns to download.
-- `--exclude-outputs [PATTERNS ...]`: Glob patterns to skip.
 
 ## kagglex dataset push
 
 Upload or update a Kaggle dataset from a local folder.
 
 ```bash
-kagglex dataset push --data-dir ./data/processed --title "Processed Corpus"
+kagglex dataset push [OPTIONS]
 ```
 
 ### Options
 
-- `--data-dir DATA_DIR`: Local folder path containing data files to package.
+- `--dir DIR`: Local folder path containing data files to package.
 - `--title TITLE`: Dataset title.
 - `--slug SLUG`: Optional custom dataset slug.
 - `--public`: Set dataset visibility to public. Defaults to private.

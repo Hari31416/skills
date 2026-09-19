@@ -73,15 +73,15 @@ kagglex run --file train.py --gpu t4-2x --title "Baseline Training"
 For projects with package layouts or multiple files, pass the command string directly:
 
 ```bash
-kagglex run "python -m mypkg.train --epochs 10 --batch-size 32" --gpu t4-2x
+kagglex run --dir . --command "python -m mypkg.train --epochs 10 --batch-size 32" --gpu t4-2x
 ```
 
 ### Multi-GPU acceleration
 
-When running multi-GPU jobs on `t4-2x`, use the `--multi-gpu` flag. The runner wraps the command in `torchrun --nproc_per_node=2`:
+When running multi-GPU jobs on `t4-2x`, use the `--multi-gpu` flag or pass `torchrun`:
 
 ```bash
-kagglex run "python -m mypkg.train --batch-size 64" --gpu t4-2x --multi-gpu
+kagglex run --dir . --command "torchrun --nproc_per_node=2 -m mypkg.train" --gpu t4-2x --multi-gpu
 ```
 
 ### Remote dependencies and secrets
@@ -91,7 +91,8 @@ Inject external pip packages, environment variables, or Kaggle secrets into the 
 ```bash
 kagglex run --file train.py \
   --extra-deps "transformers>=4.40.0" "accelerate" "wandb" \
-  --kaggle-secrets WANDB_API_KEY HF_TOKEN \
+  --secret WANDB_API_KEY \
+  --secret HF_TOKEN \
   --env WANDB_PROJECT=image-classifier
 ```
 
@@ -101,11 +102,19 @@ Attach existing Kaggle datasets or bundle local data folders:
 
 ```bash
 kagglex run --file train.py \
-  --datasets "zillow/zecon" \
+  --dataset "zillow/zecon" \
   --include-data ./data/splits
 ```
 
 Attached datasets mount under `/kaggle/input/<dataset-name>/`.
+
+### Large payload offloading (--auto-dataset)
+
+When your repository or bundled assets exceed Kaggle's 5 MB inline code limit, pass `--auto-dataset` to automatically publish and version a private Kaggle dataset containing the payload:
+
+```bash
+kagglex run --dir . --command "python train.py" --include-data ./embeddings --auto-dataset
+```
 
 ## Monitoring and artifact sync
 
@@ -114,50 +123,89 @@ Attached datasets mount under `/kaggle/input/<dataset-name>/`.
 Stream logs directly to stdout as the kernel runs:
 
 ```bash
-kagglex run "python train.py" --stream
+kagglex run --file train.py --stream
 ```
 
 ### Non-blocking execution
 
-Submit a job without waiting, and retrieve logs or status later:
+Submit a job without waiting:
 
 ```bash
-kagglex run "python train.py" --no-wait --slug my-run-01
+kagglex run --file train.py --no-wait --slug my-run-01
 ```
 
-Inspect run status:
+### List recent runs
+
+List recent runs recorded across your machine in `~/.kagglex/runs.json`:
 
 ```bash
-kagglex status my-run-01
+kagglex list --limit 10
 ```
 
-Stream logs for a running or completed kernel:
+### Cancel an ongoing run
 
-```bash
-kagglex logs my-run-01
-```
-
-List recent runs:
-
-```bash
-kagglex list
-```
-
-Cancel an ongoing run:
+Cancel an active or queued remote kernel:
 
 ```bash
 kagglex cancel my-run-01
 ```
 
-### Downloading outputs
+### Artifact download filtering
 
-Download produced model checkpoints, logs, and artifacts:
+By default, completed runs download outputs to `./outputs`. Filter downloaded artifacts using glob patterns:
 
 ```bash
-kagglex pull my-run-01 --output-dir ./results --include-outputs "*.json" "checkpoints/*"
+kagglex run --file train.py \
+  --output-dir ./results \
+  --include-outputs "metrics.json" \
+  --include-outputs "best_model.pt" \
+  --exclude-outputs "checkpoint_epoch_*.pt"
 ```
 
-Default output exclusion filters skip temporary zip files, `.pyc` files, and raw `.pt` weights unless explicitly matched by `--include-outputs`.
+## GPU/TPU Quota Tracking
+
+Track rolling accelerator consumption against Kaggle's weekly limits (30 GPU hours / 20 TPU hours):
+
+```bash
+# View quota dashboard (past 7 days by default)
+kagglex quota
+
+# Check custom window and thresholds
+kagglex quota --days 14 --gpu-limit 40.0 --tpu-limit 30.0
+```
+
+Run history is tracked globally in `~/.kagglex/runs.json` across all local repositories.
+
+## Declarative Configuration
+
+Set machine-wide defaults in `~/.kagglex/config.toml`:
+
+```toml
+# ~/.kagglex/config.toml
+gpu = "p100"
+quota_days = 7
+gpu_weekly_limit_hours = 30.0
+kaggle_secrets = ["WANDB_API_KEY", "HF_TOKEN"]
+
+[env]
+WANDB_ENTITY = "my-org"
+```
+
+Override project settings in `pyproject.toml` or `kagglex.toml`:
+
+```toml
+# pyproject.toml
+[tool.kagglex]
+gpu = "t4-2x"
+multi_gpu = true
+auto_dataset = false
+include_outputs = ["*.json", "checkpoints/*"]
+
+[tool.kagglex.env]
+WANDB_PROJECT = "vit-finetune"
+```
+
+CLI flags override all configuration files.
 
 ## Interactive REPL execution
 
@@ -166,7 +214,7 @@ When a Kaggle notebook session is active, connect directly to its Jupyter proxy 
 Set the proxy URL via environment variable:
 
 ```bash
-export KAGGLE_JUPYTER_URL="https://kkb-production.jupyter-proxy.kaggle.net?token=YOUR_TOKEN"
+export KAGGLE_JUPYTER_URL="https://kkb-production.jupyter-proxy.kaggle.net/k/12345678/abcdef?token=YOUR_TOKEN"
 ```
 
 Or pass `--url` with each command.
@@ -204,7 +252,7 @@ kagglex exec --list-files
 Transfer files between local and remote environments:
 
 ```bash
-kagglex exec --upload ./local_weights.pt --remote-name weights.pt
+kagglex exec --upload ./local_weights.pt
 kagglex exec --download output_metrics.json -o ./metrics.json
 ```
 
@@ -213,7 +261,7 @@ kagglex exec --download output_metrics.json -o ./metrics.json
 Push local directories to Kaggle as versioned datasets:
 
 ```bash
-kagglex dataset push --data-dir ./data/embeddings --title "Text Embeddings Dataset"
+kagglex dataset push --dir ./data/embeddings --title "Text Embeddings Dataset"
 ```
 
 ## Python SDK usage
@@ -221,21 +269,22 @@ kagglex dataset push --data-dir ./data/embeddings --title "Text Embeddings Datas
 Integrate `kagglex` programmatically in Python workflows:
 
 ```python
+from pathlib import Path
 from kagglex import KaggleRunner, RunConfig
 
-runner = KaggleRunner()
+runner = KaggleRunner(repo_root=Path("."))
 config = RunConfig(
     command="python -m mypkg.train --epochs 5",
-    gpu="t4-2x",
+    title="Fine Tuning",
+    gpu_type="t4-2x",
     multi_gpu=True,
-    extra_deps=["wandb"],
+    auto_dataset=False,
+    extra_pip_deps=["wandb"],
     kaggle_secrets=["WANDB_API_KEY"],
 )
 
-job = runner.run(config=config, wait=True)
+job = runner.run(config=config, wait=True, stream=True, pull=True)
 print(f"Final status: {job.status}")
-
-job.pull_outputs(destination_dir="./results", include_patterns=["*.json"])
 ```
 
 ## References
