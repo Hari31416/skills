@@ -87,7 +87,7 @@ kagglex exec --list-files checkpoints
 Send local datasets or script files to `/kaggle/working/`:
 
 ```bash
-kagglex exec --upload ./configs/experiment.yaml --remote-name experiment.yaml
+kagglex exec --upload ./configs/experiment.yaml
 ```
 
 Retrieve generated outputs or model weights from the remote session:

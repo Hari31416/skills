@@ -70,13 +70,13 @@ data/
 To use datasets larger than a few megabytes, push them separately as a Kaggle dataset:
 
 ```bash
-kagglex dataset push --data-dir ./data --title "My Large Dataset"
+kagglex dataset push --dir ./data --title "My Large Dataset"
 ```
 
 Then attach the dataset when running your job:
 
 ```bash
-kagglex run --file train.py --datasets "username/my-large-dataset"
+kagglex run --file train.py --dataset "username/my-large-dataset"
 ```
 
 Attached datasets mount at `/kaggle/input/my-large-dataset/` without counting toward the upload limit.
@@ -105,12 +105,12 @@ Remote logs show missing environment variables or API keys during execution.
 
 ### Solutions
 
-Secrets specified with `--kaggle-secrets` must exist in your Kaggle account.
+Secrets specified with `--secret` must exist in your Kaggle account.
 
 1. Open any notebook in Kaggle.
 2. Click `Add-ons` -> `Secrets`.
 3. Add the secret label (for example: `WANDB_API_KEY`) and save.
-4. Re-run your command with `--kaggle-secrets WANDB_API_KEY`.
+4. Re-run your command with `--secret WANDB_API_KEY`.
 
 ## Interactive Jupyter proxy connection dropped
 

@@ -126,3 +126,34 @@ kagglex dataset push [OPTIONS]
 - `--title TITLE`: Dataset title.
 - `--slug SLUG`: Optional custom dataset slug.
 - `--public`: Set dataset visibility to public. Defaults to private.
+
+## Configuration files
+
+Set machine-wide defaults in `~/.kagglex/config.toml`:
+
+```toml
+# ~/.kagglex/config.toml
+gpu = "p100"
+quota_days = 7
+gpu_weekly_limit_hours = 30.0
+kaggle_secrets = ["WANDB_API_KEY", "HF_TOKEN"]
+
+[env]
+WANDB_ENTITY = "my-org"
+```
+
+Override project settings in `pyproject.toml` or `kagglex.toml`:
+
+```toml
+# pyproject.toml
+[tool.kagglex]
+gpu = "t4-2x"
+multi_gpu = true
+auto_dataset = false
+include_outputs = ["*.json", "checkpoints/*"]
+
+[tool.kagglex.env]
+WANDB_PROJECT = "vit-finetune"
+```
+
+CLI flags override configuration file settings.

@@ -1,66 +1,33 @@
 ---
 name: kagglex
-description: Install and use the kagglex module to run Python scripts, modules, or experiments on remote Kaggle GPUs and TPUs, stream remote execution logs, pull output artifacts, manage Kaggle datasets, or run interactive REPL commands on active Kaggle notebooks. Use whenever the user asks to run code on Kaggle, train models on cloud GPUs or TPUs, offload heavy compute, dispatch remote training jobs, run torchrun on Kaggle, or interact with Kaggle notebook sessions.
+description: Load when needed to execute Python scripts, modules, or experiments on remote Kaggle GPUs and TPUs, track accelerator quotas, manage datasets, and run interactive REPL commands in Kaggle notebooks.
 ---
 
 # kagglex
 
 Execute local Python code, modules, and experiments on Kaggle GPUs and TPUs.
 
-## Overview
+## Setup and authentication
 
-Use this skill when you need cloud compute (Nvidia T4 x2, P100, or TPU v3-8) to train models, evaluate checkpoints, run batch inference, or test code interactively on Kaggle hardware.
-
-The module packages your local workspace, injects dependencies and secrets, uploads the payload to Kaggle, triggers execution, streams remote logs, and downloads resulting artifacts.
-
-## Installation and setup
-
-Install the CLI using `uv`. Pick the installation method that matches your environment:
-
-Install globally as a CLI tool:
-
-```bash
-uv tool install kagglex
-```
-
-Install into the active Python virtual environment:
+Install the CLI:
 
 ```bash
 uv pip install kagglex
 ```
 
-When working inside the `kagglex` repository itself, install in editable mode:
+Authentication requires either `~/.kaggle/kaggle.json` or the environment variables `KAGGLE_USERNAME` and `KAGGLE_KEY`. Verify authentication status:
 
 ```bash
-uv pip install -e .
+python -c "from kagglex.client import check_kaggle_health; ok, u = check_kaggle_health(); print(u if ok else 'failed')"
 ```
 
-Run ephemerally without permanent installation:
+GPU and TPU accelerators require a phone-verified Kaggle account.
 
-```bash
-uv run --with kagglex kagglex --help
-```
+## Batch execution
 
-## Pre-flight verification
+Run local code remotely on Kaggle accelerators (`t4-2x`, `p100`, `v3-8`, or `none`).
 
-Before dispatching jobs, verify credentials and network access:
-
-```bash
-python -c "from kagglex.client import check_kaggle_health; ok, user = check_kaggle_health(); print(f'Authenticated as {user}' if ok else f'Auth failed: {user}')"
-```
-
-Authentication requires either:
-
-- A valid credential file at `~/.kaggle/kaggle.json` with your username and API key.
-- The environment variables `KAGGLE_USERNAME` and `KAGGLE_KEY`.
-
-Ensure your Kaggle account has accepted phone verification if you plan to use GPU or TPU accelerators.
-
-## Batch job execution
-
-Run local code remotely using `kagglex run`.
-
-### Standalone script execution
+### Standalone script
 
 Run a single script on a dual T4 GPU accelerator:
 
@@ -68,133 +35,108 @@ Run a single script on a dual T4 GPU accelerator:
 kagglex run --file train.py --gpu t4-2x --title "Baseline Training"
 ```
 
-### Module and package execution
+### Module or package command
 
-For projects with package layouts or multiple files, pass the command string directly:
-
-```bash
-kagglex run --dir . --command "python -m mypkg.train --epochs 10 --batch-size 32" --gpu t4-2x
-```
-
-### Multi-GPU acceleration
-
-When running multi-GPU jobs on `t4-2x`, use the `--multi-gpu` flag or pass `torchrun`:
+Execute a module inside a repository layout with multi-GPU wrapping and log streaming:
 
 ```bash
-kagglex run --dir . --command "torchrun --nproc_per_node=2 -m mypkg.train" --gpu t4-2x --multi-gpu
+kagglex run --dir . \
+  --command "torchrun --nproc_per_node=2 -m mypkg.train --epochs 10" \
+  --gpu t4-2x \
+  --multi-gpu \
+  --stream
 ```
 
-### Remote dependencies and secrets
+### Dependencies, secrets, and datasets
 
-Inject external pip packages, environment variables, or Kaggle secrets into the remote environment:
+Inject dependencies, environment variables, Kaggle secrets, and dataset mounts:
 
 ```bash
 kagglex run --file train.py \
   --extra-deps "transformers>=4.40.0" "accelerate" "wandb" \
   --secret WANDB_API_KEY \
-  --secret HF_TOKEN \
-  --env WANDB_PROJECT=image-classifier
-```
-
-### Mounting datasets and local data
-
-Attach existing Kaggle datasets or bundle local data folders:
-
-```bash
-kagglex run --file train.py \
-  --dataset "zillow/zecon" \
+  --env WANDB_PROJECT=image-classifier \
+  --dataset "username/dataset-name" \
   --include-data ./data/splits
 ```
 
 Attached datasets mount under `/kaggle/input/<dataset-name>/`.
 
-### Large payload offloading (--auto-dataset)
+### Large payload offloading
 
-When your repository or bundled assets exceed Kaggle's 5 MB inline code limit, pass `--auto-dataset` to automatically publish and version a private Kaggle dataset containing the payload:
+When local code or bundled data exceeds 5 MB, add `--auto-dataset` to automatically publish and version a private Kaggle dataset containing the payload:
 
 ```bash
 kagglex run --dir . --command "python train.py" --include-data ./embeddings --auto-dataset
 ```
 
-## Monitoring and artifact sync
+### Non-blocking submission and output filtering
 
-### Real-time streaming
-
-Stream logs directly to stdout as the kernel runs:
+Submit without waiting and filter downloaded artifacts upon completion:
 
 ```bash
-kagglex run --file train.py --stream
-```
-
-### Non-blocking execution
-
-Submit a job without waiting:
-
-```bash
+# Non-blocking run
 kagglex run --file train.py --no-wait --slug my-run-01
-```
 
-### List recent runs
-
-List recent runs recorded across your machine in `~/.kagglex/runs.json`:
-
-```bash
-kagglex list --limit 10
-```
-
-### Cancel an ongoing run
-
-Cancel an active or queued remote kernel:
-
-```bash
-kagglex cancel my-run-01
-```
-
-### Artifact download filtering
-
-By default, completed runs download outputs to `./outputs`. Filter downloaded artifacts using glob patterns:
-
-```bash
+# Download specific artifact patterns to a custom folder
 kagglex run --file train.py \
   --output-dir ./results \
-  --include-outputs "metrics.json" \
-  --include-outputs "best_model.pt" \
+  --include-outputs "metrics.json" "best_model.pt" \
   --exclude-outputs "checkpoint_epoch_*.pt"
 ```
 
-## GPU/TPU Quota Tracking
+## Quota and run management
 
-Track rolling accelerator consumption against Kaggle's weekly limits (30 GPU hours / 20 TPU hours):
+Track accelerator consumption against weekly limits (30 GPU hours / 20 TPU hours):
 
 ```bash
-# View quota dashboard (past 7 days by default)
+# View 7-day rolling accelerator consumption
 kagglex quota
 
-# Check custom window and thresholds
+# Query custom rolling window and limits
 kagglex quota --days 14 --gpu-limit 40.0 --tpu-limit 30.0
+
+# List recent runs across all local repositories
+kagglex list --limit 10
+
+# Cancel an active or queued kernel
+kagglex cancel <slug-or-id>
 ```
 
-Run history is tracked globally in `~/.kagglex/runs.json` across all local repositories.
+## Interactive REPL execution
 
-## Declarative Configuration
+Connect directly to an active Kaggle notebook session for low-latency debugging:
 
-Set machine-wide defaults in `~/.kagglex/config.toml`:
+```bash
+# Set Jupyter proxy URL from Kaggle notebook (Run -> Kaggle Jupyter Server -> Copy URL)
+export KAGGLE_JUPYTER_URL="https://kkb-production.jupyter-proxy.kaggle.net/k/123/token=YOUR_TOKEN"
 
-```toml
-# ~/.kagglex/config.toml
-gpu = "p100"
-quota_days = 7
-gpu_weekly_limit_hours = 30.0
-kaggle_secrets = ["WANDB_API_KEY", "HF_TOKEN"]
+# Test connection and query GPU hardware
+kagglex exec --test
+kagglex exec --gpu-info
 
-[env]
-WANDB_ENTITY = "my-org"
+# Execute inline Python or local scripts remotely
+kagglex exec "import torch; print(torch.cuda.get_device_name(0))"
+kagglex exec --file debug_step.py
+
+# Transfer files to and from /kaggle/working/
+kagglex exec --upload ./weights.pt
+kagglex exec --download output_metrics.json -o ./metrics.json
 ```
 
-Override project settings in `pyproject.toml` or `kagglex.toml`:
+## Dataset management
+
+Upload or update a Kaggle dataset from a local folder:
+
+```bash
+kagglex dataset push --dir ./data/embeddings --title "Text Embeddings Dataset"
+```
+
+## Declarative configuration
+
+Set project-level defaults in `pyproject.toml` or `kagglex.toml`:
 
 ```toml
-# pyproject.toml
 [tool.kagglex]
 gpu = "t4-2x"
 multi_gpu = true
@@ -205,68 +147,11 @@ include_outputs = ["*.json", "checkpoints/*"]
 WANDB_PROJECT = "vit-finetune"
 ```
 
-CLI flags override all configuration files.
+Set machine-wide defaults in `~/.kagglex/config.toml`. CLI flags override configuration files.
 
-## Interactive REPL execution
+## Python SDK
 
-When a Kaggle notebook session is active, connect directly to its Jupyter proxy server for low-latency command execution and debugging.
-
-Set the proxy URL via environment variable:
-
-```bash
-export KAGGLE_JUPYTER_URL="https://kkb-production.jupyter-proxy.kaggle.net/k/12345678/abcdef?token=YOUR_TOKEN"
-```
-
-Or pass `--url` with each command.
-
-Test connection:
-
-```bash
-kagglex exec --test
-```
-
-Inspect available GPUs and memory:
-
-```bash
-kagglex exec --gpu-info
-```
-
-Execute a Python code string:
-
-```bash
-kagglex exec "import torch; print(torch.cuda.get_device_name(0))"
-```
-
-Execute a local script on the remote kernel:
-
-```bash
-kagglex exec --file debug_step.py
-```
-
-List remote files in `/kaggle/working/`:
-
-```bash
-kagglex exec --list-files
-```
-
-Transfer files between local and remote environments:
-
-```bash
-kagglex exec --upload ./local_weights.pt
-kagglex exec --download output_metrics.json -o ./metrics.json
-```
-
-## Kaggle dataset management
-
-Push local directories to Kaggle as versioned datasets:
-
-```bash
-kagglex dataset push --dir ./data/embeddings --title "Text Embeddings Dataset"
-```
-
-## Python SDK usage
-
-Integrate `kagglex` programmatically in Python workflows:
+Programmatic interface for automation workflows:
 
 ```python
 from pathlib import Path
@@ -278,20 +163,19 @@ config = RunConfig(
     title="Fine Tuning",
     gpu_type="t4-2x",
     multi_gpu=True,
-    auto_dataset=False,
     extra_pip_deps=["wandb"],
     kaggle_secrets=["WANDB_API_KEY"],
 )
 
 job = runner.run(config=config, wait=True, stream=True, pull=True)
-print(f"Final status: {job.status}")
+print(f"Status: {job.status}")
 ```
 
 ## References
 
-For full parameter listings, configuration options, and debugging workflows, consult the reference documents:
+Consult dedicated reference guides when you need exhaustive parameter listings or troubleshooting:
 
-- [CLI Reference](references/cli-reference.md)
-- [SDK Reference](references/sdk-reference.md)
-- [Interactive REPL Reference](references/interactive-repl.md)
-- [Troubleshooting Guide](references/troubleshooting.md)
+- [CLI Reference](references/cli-reference.md): Full parameter specifications and configuration file options.
+- [Interactive REPL Reference](references/interactive-repl.md): Connection details, execution timeouts, and session management.
+- [SDK Reference](references/sdk-reference.md): Detailed API reference for `KaggleRunner`, `RunConfig`, and `Job`.
+- [Troubleshooting Guide](references/troubleshooting.md): Solutions for auth issues, quota errors, packaging limits, and network disconnects.
